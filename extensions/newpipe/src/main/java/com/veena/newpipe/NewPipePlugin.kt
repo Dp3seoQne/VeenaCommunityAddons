@@ -129,58 +129,90 @@ class Plugin : MusicAddon {
             else -> "https://www.youtube.com/watch?v=$songId"
         }
 
-        val extractor = YouTube.getStreamExtractor(absoluteUrl)
-        extractor.fetchPage()
+        Log.d(TAG, "Starting stream extraction process for URL: $absoluteUrl")
 
-        val audioStreams = extractor.audioStreams.sortedByDescending { it.bitrate }
-        val playableURLs = mutableMapOf<String, String>()
+        try {
+            val extractor = YouTube.getStreamExtractor(absoluteUrl)
+            Log.d(TAG, "Extractor initialized. Fetching page layout...")
+            extractor.fetchPage()
+            Log.d(TAG, "Page layout fetch complete.")
 
-        if (audioStreams.isNotEmpty()) {
-            playableURLs["320kbps"] = audioStreams.first().content
-            playableURLs["160kbps"] = audioStreams.first().content
-            if (audioStreams.size > 1) {
-                playableURLs["128kbps"] = audioStreams[audioStreams.size / 2].content
+            val audioStreams = extractor.audioStreams
+            Log.d(TAG, "Total audio streams found: ${audioStreams.size}")
+            audioStreams.forEachIndexed { index, stream ->
+                Log.d(TAG, "  Audio Stream [$index]: Format=${stream.format?.suffix}, Bitrate=${stream.bitrate}, URL=${stream.content}")
             }
-            playableURLs["48kbps"] = audioStreams.last().content
-        }
 
-        val rawDescription = extractor.description.content
-        val composer = Regex("Composer:\\s*(.*)").find(rawDescription)?.groupValues?.get(1)?.trim() ?: ""
-        val lyricist = Regex("Lyricist:\\s*(.*)").find(rawDescription)?.groupValues?.get(1)?.trim() ?: ""
-        var parsedYear = ""
+            val videoStreams = extractor.videoStreams
+            Log.d(TAG, "Total video streams found: ${videoStreams.size}")
+            videoStreams.forEachIndexed { index, stream ->
+                Log.d(TAG, "  Video Stream [$index]: Format=${stream.format?.suffix}, Resolution=${stream.resolution}, URL=${stream.content}")
+            }
 
-        val releasedOnMatch = Regex("Released on:\\s*(\\d{4})").find(rawDescription)
-        if (releasedOnMatch != null) {
-            parsedYear = releasedOnMatch.groupValues[1]
-        }
+            val sortedAudio = audioStreams.sortedByDescending { it.bitrate }
+            val playableURLs = mutableMapOf<String, String>()
 
-        if (parsedYear.isEmpty()) {
-            parsedYear = extractor.uploadDate?.instant?.toString()?.take(4) ?: ""
-        }
-        var parsedAlbum = ""
-        val blocks = rawDescription.split("<br>").map { it.trim() }.filter { it.isNotEmpty() }
-        blocks.forEachIndexed { index, block ->
-            if (block.contains("·") && index + 1 < blocks.size) {
-                val next = blocks[index + 1]
-                if (!next.startsWith("℗") && !next.startsWith("Released") && !next.startsWith("Composer")) {
-                    parsedAlbum = next
+            if (sortedAudio.isNotEmpty()) {
+                playableURLs["320kbps"] = sortedAudio.first().content
+                playableURLs["160kbps"] = sortedAudio.first().content
+                if (sortedAudio.size > 1) {
+                    playableURLs["128kbps"] = sortedAudio[sortedAudio.size / 2].content
+                }
+                playableURLs["48kbps"] = sortedAudio.last().content
+                Log.d(TAG, "Successfully populated adaptive audio streams.")
+            } else if (videoStreams.isNotEmpty()) {
+                Log.w(TAG, "No adaptive audio streams returned. Deploying progressive video fallback pipeline...")
+                val fallbackUrl = videoStreams.first().content
+                playableURLs["320kbps"] = fallbackUrl
+                playableURLs["160kbps"] = fallbackUrl
+                playableURLs["128kbps"] = fallbackUrl
+                playableURLs["48kbps"] = fallbackUrl
+            } else {
+                Log.w(TAG, "Warning: Extractor succeeded, but both audio and video streams are empty.")
+            }
+
+            val rawDescription = extractor.description?.content ?: ""
+            val composer = Regex("Composer:\\s*(.*)").find(rawDescription)?.groupValues?.get(1)?.trim() ?: ""
+            val lyricist = Regex("Lyricist:\\s*(.*)").find(rawDescription)?.groupValues?.get(1)?.trim() ?: ""
+            var parsedYear = ""
+
+            val releasedOnMatch = Regex("Released on:\\s*(\\d{4})").find(rawDescription)
+            if (releasedOnMatch != null) {
+                parsedYear = releasedOnMatch.groupValues[1]
+            }
+
+            if (parsedYear.isEmpty()) {
+                parsedYear = extractor.uploadDate?.instant?.toString()?.take(4) ?: ""
+            }
+            var parsedAlbum = ""
+            val blocks = rawDescription.split("<br>").map { it.trim() }.filter { it.isNotEmpty() }
+            blocks.forEachIndexed { index, block ->
+                if (block.contains("·") && index + 1 < blocks.size) {
+                    val next = blocks[index + 1]
+                    if (!next.startsWith("℗") && !next.startsWith("Released") && !next.startsWith("Composer")) {
+                        parsedAlbum = next
+                    }
                 }
             }
-        }
 
-        return ExtSong(
-            id = extractor.url,
-            title = extractor.name,
-            artist = extractor.uploaderName.removeSuffix(" - Topic"),
-            thumbnail = extractor.uploaderAvatars.firstOrNull()?.url?.replace("s48", "s720") ?: "",
-            duration = extractor.length.toString(),
-            streamableUrls = playableURLs,
-            album = parsedAlbum,
-            year = parsedYear,
-            composer = composer,
-            lyricist = lyricist,
-            genre = extractor.category
-        )
+            return ExtSong(
+                id = extractor.url,
+                title = extractor.name,
+                artist = extractor.uploaderName.removeSuffix(" - Topic"),
+                thumbnail = extractor.uploaderAvatars?.firstOrNull()?.url?.replace("s48", "s720") ?: "",
+                duration = extractor.length.toString(),
+                streamableUrls = playableURLs,
+                album = parsedAlbum,
+                year = parsedYear,
+                composer = composer,
+                lyricist = lyricist,
+                genre = extractor.category ?: ""
+            )
+
+        } catch (e: Exception) {
+            Log.e(TAG, "CRITICAL FAILURE: getSongDetails extraction crashed for ID: $songId", e)
+            throw e
+        }
     }
 
     override fun getStreamUrl(songId: String, quality: String): String {

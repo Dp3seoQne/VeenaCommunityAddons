@@ -28,3 +28,4 @@ rootProject.name = "VeenaExtensions"
 
 include(":extensions:newpipe")
 include(":extensions:soundcloud")
+include(":extensions:saavn")
