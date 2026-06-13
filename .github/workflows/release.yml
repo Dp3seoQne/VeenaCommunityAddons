@@ -31,7 +31,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build All Sub-Modules
-        run: ./gradlew buildVeenaPlugin
+      # We pass GRADLE_OPTS to allocate more memory to the Gradle JVM
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError"
+        run: ./gradlew buildVeenaPlugin --no-daemon
 
       # Automatically calculate, create, and push the next semver tag
       - name: Bump version and push tag

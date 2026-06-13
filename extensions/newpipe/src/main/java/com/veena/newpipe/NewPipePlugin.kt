@@ -11,7 +11,6 @@ import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
-
 @AddonEntryPoint
 class Plugin : MusicAddon {
     private lateinit var host: ExtensionHost
