@@ -8,6 +8,6 @@
   "description": "Stream from innertube using YtmKt.",
   "updateUrl": "https://github.com/Dp3seoQne/VeenaCommunityAddons/releases/latest",
   "iconUrl": "https://upload.wikimedia.org/wikipedia/commons/d/d8/YouTubeMusic_Logo.png",
-  "entryPoint": "com.veena.ytmkt.Plugin",
+  "entryPoint": "com.veena.ytmplugin.Plugin",
   "capabilities": ["search", "details", "stream", "suggestions"]
 }
