@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.veena.soundcloudplugin"
+    namespace = "com.veena.ytmusic"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.veena.soundcloud"
+        applicationId = "com.veena.ytmusic"
         minSdk = 24
         targetSdk = 37
     }
@@ -23,6 +23,5 @@ android {
 dependencies {
     compileOnly("com.squareup.okhttp3:okhttp:5.3.2")
     compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
-    //implementation("com.github.IndusAryan:Veena:main-SNAPSHOT")
-    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.26.3")
+    implementation("dev.toastbits:ytm-kt:0.5.1")
 }

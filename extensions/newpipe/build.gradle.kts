@@ -31,7 +31,7 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
     //implementation("com.github.IndusAryan:Veena:main-SNAPSHOT")
     compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
-    implementation("com.github.UpAllNite-Software:NewPipeExtractor:58ed44bd7ab2271d744eb027c74f0a97e7200079")
+    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.26.3")
     implementation("org.mozilla:rhino") {
         version { strictly("1.7.13") }
     }

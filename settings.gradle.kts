@@ -20,6 +20,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://jitpack.io")
+        maven("https://maven.syk.sh")
         //mavenLocal()
     }
 }
@@ -29,3 +30,4 @@ rootProject.name = "VeenaExtensions"
 include(":extensions:newpipe")
 include(":extensions:soundcloud")
 include(":extensions:saavn")
+include("extensions:ytmkt")

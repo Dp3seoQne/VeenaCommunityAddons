@@ -89,7 +89,15 @@ class SaavnPlugin : MusicAddon {
     }
 
     private fun String?.sanitize(): String {
-        return this?.replace("&quot;", "")?.replace("&amp;", "&") ?: ""
+        if (this.isNullOrEmpty()) return ""
+        val entities = mapOf(
+            "&quot;" to "",
+            "&amp;" to "&"
+        )
+        val regex = entities.keys.joinToString("|") { Regex.escape(it) }.toRegex()
+        return regex.replace(this) { matchResult ->
+            entities[matchResult.value] ?: matchResult.value
+        }
     }
 
     @Serializable
