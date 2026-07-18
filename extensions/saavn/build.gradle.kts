@@ -1,14 +1,15 @@
 plugins {
     id("com.android.application")
     id("com.indus.veena.extension")
+    kotlin("plugin.serialization") version "2.3.21"
 }
 
 android {
-    namespace = "com.veena.soundcloudplugin"
+    namespace = "com.veena.saavn"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.veena.soundcloud"
+        applicationId = "com.veena.saavn"
         minSdk = 24
         targetSdk = 37
     }
@@ -23,6 +24,5 @@ android {
 dependencies {
     compileOnly("com.squareup.okhttp3:okhttp:5.4.0")
     compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
-    //implementation("com.github.IndusAryan:Veena:main-SNAPSHOT")
-    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.26.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 }

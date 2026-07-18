@@ -2,8 +2,15 @@ pluginManagement {
     repositories {
         google()
         mavenCentral()
-        mavenLocal()
+        maven("https://jitpack.io")
         gradlePluginPortal()
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "com.indus.veena.extension") {
+                useModule("com.github.IndusAryan.Veena:com.indus.veena.extension.gradle.plugin:main-SNAPSHOT")
+            }
+        }
     }
 }
 
@@ -13,7 +20,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://jitpack.io")
-        mavenLocal()
+        maven("https://maven.syk.sh")
+        //mavenLocal()
     }
 }
 
@@ -21,3 +29,5 @@ rootProject.name = "VeenaExtensions"
 
 include(":extensions:newpipe")
 include(":extensions:soundcloud")
+include(":extensions:saavn")
+include("extensions:ytmkt")

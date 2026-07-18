@@ -1,0 +1,56 @@
+name: Build and Release All Extensions
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Required to fetch all history for accurate tag detection
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'zulu'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make Gradle Executable
+        run: chmod +x gradlew
+
+      - name: Build All Sub-Modules
+      # We pass GRADLE_OPTS to allocate more memory to the Gradle JVM
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError"
+        run: ./gradlew buildVeenaPlugin --no-daemon
+
+      # Automatically calculate, create, and push the next semver tag
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: minor # Bumps the minor version (e.g., 1.0.0 -> 1.1.0). Change to 'patch' for 1.0.1.
+          initial_version: 1.0.0
+
+      - name: Publish All Generated Packages
+        uses: softprops/action-gh-release@v3
+        with:
+          files: "**/build/veena/*.veena"
+          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          name: Release ${{ steps.tag_version.outputs.new_tag }}
+          body: ${{ steps.tag_version.outputs.changelog }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
