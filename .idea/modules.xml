@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/extensions/VeenaExtensions.extensions.iml" filepath="$PROJECT_DIR$/.idea/modules/extensions/VeenaExtensions.extensions.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/extensions/newpipe/VeenaExtensions.extensions.newpipe.iml" filepath="$PROJECT_DIR$/.idea/modules/extensions/newpipe/VeenaExtensions.extensions.newpipe.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/extensions/newpipe/VeenaExtensions.extensions.newpipe.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/extensions/newpipe/VeenaExtensions.extensions.newpipe.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/extensions/saavn/VeenaExtensions.extensions.saavn.iml" filepath="$PROJECT_DIR$/.idea/modules/extensions/saavn/VeenaExtensions.extensions.saavn.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/extensions/saavn/VeenaExtensions.extensions.saavn.main.iml" filepath="$PROJECT_DIR$/.idea/modules/extensions/saavn/VeenaExtensions.extensions.saavn.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/extensions/saavn/VeenaExtensions.extensions.saavn.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/extensions/saavn/VeenaExtensions.extensions.saavn.unitTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/extensions/soundcloud/VeenaExtensions.extensions.soundcloud.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/extensions/soundcloud/VeenaExtensions.extensions.soundcloud.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/extensions/soundcloud/VeenaExtensions.extensions.soundcloud.main.iml" filepath="$PROJECT_DIR$/.idea/modules/extensions/soundcloud/VeenaExtensions.extensions.soundcloud.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/extensions/ytmkt/VeenaExtensions.extensions.ytmkt.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/extensions/ytmkt/VeenaExtensions.extensions.ytmkt.unitTest.iml" />
+    </modules>
+  </component>
+</project>

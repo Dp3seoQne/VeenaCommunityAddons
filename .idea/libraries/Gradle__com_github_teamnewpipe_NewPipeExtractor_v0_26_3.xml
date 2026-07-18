@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="Gradle: com.github.teamnewpipe:NewPipeExtractor:v0.26.3" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.github.teamnewpipe" artifactId="NewPipeExtractor" version="v0.26.3" baseVersion="v0.26.3" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.teamnewpipe/NewPipeExtractor/v0.26.3/ed67f19b5e41baa6ce93a682e6e682fc4e5ab977/NewPipeExtractor-v0.26.3.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.teamnewpipe/NewPipeExtractor/v0.26.3/ed67f19b5e41baa6ce93a682e6e682fc4e5ab977/NewPipeExtractor-v0.26.3.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.teamnewpipe/NewPipeExtractor/v0.26.3/ed67f19b5e41baa6ce93a682e6e682fc4e5ab977/NewPipeExtractor-v0.26.3.jar!/" />
+    </SOURCES>
+  </library>
+</component>

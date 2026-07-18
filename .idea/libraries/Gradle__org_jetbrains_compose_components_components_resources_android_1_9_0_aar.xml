@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: org.jetbrains.compose.components:components-resources-android:1.9.0@aar" external-system-id="GRADLE">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/9.3.1/transforms/048d3f42edfa15386344db355748c5f4/workspace/transformed/library-release/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/9.3.1/transforms/048d3f42edfa15386344db355748c5f4/workspace/transformed/library-release/AndroidManifest.xml" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.compose.components/components-resources-android/1.9.0/404b1057f2988316632440eb386c086aeff9d9b6/library-android-1.9.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

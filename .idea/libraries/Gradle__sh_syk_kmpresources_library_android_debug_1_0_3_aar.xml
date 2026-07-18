@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: sh.syk:kmpresources-library-android-debug:1.0.3@aar" external-system-id="GRADLE">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/9.3.1/transforms/6f8469f2596c03815c5095ccae34814b/workspace/transformed/library-debug/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/9.3.1/transforms/6f8469f2596c03815c5095ccae34814b/workspace/transformed/library-debug/AndroidManifest.xml" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/sh.syk/kmpresources-library-android-debug/1.0.3/968c1eab85c82191c7cb5bcb259b075be611cca2/library-android-debug-1.0.3-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
