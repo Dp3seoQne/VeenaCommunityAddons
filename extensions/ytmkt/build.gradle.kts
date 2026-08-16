@@ -23,5 +23,5 @@ android {
 dependencies {
     compileOnly("com.squareup.okhttp3:okhttp:5.4.0")
     compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
-    implementation("dev.toastbits:ytm-kt:0.6.0")
+    implementation("dev.toastbits:ytm-kt:0.6.1")
 }

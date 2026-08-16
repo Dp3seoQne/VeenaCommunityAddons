@@ -54,18 +54,18 @@ class Plugin : MusicAddon {
                             httpResponse.body,
                             httpResponse.finalUrl
                         )
-                    } catch (e: Exception) {
-                        Log.e(TAG, "NewPipe downloader failed for $url", e)
-                        throw e
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "NewPipe downloader failed for $url", t)
+                        throw t
                     }
                 }
             }
             )
 
             Log.d(TAG, "NewPipe environment ready.")
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             // This fires if NewPipe was already init'd in a previous load — that's fine
-            Log.w(TAG, "NewPipe init skipped or failed: ${e.message}")
+            Log.w(TAG, "NewPipe init skipped or failed: ${t.message}")
         }
     }
 
@@ -77,13 +77,12 @@ class Plugin : MusicAddon {
         return try {
             val suggestions = YouTube.suggestionExtractor.suggestionList(query)
             suggestions ?: emptyList()
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             emptyList()
         }
     }
 
     override fun searchSongs(query: String, page: Int): List<ExtSong> {
-        //withContext(Dispatchers.IO) {
             Log.d(TAG, "Searching for: $query")
             return try {
                 val extractor = YouTube.getSearchExtractor(
@@ -115,8 +114,8 @@ class Plugin : MusicAddon {
 
                 Log.d(TAG, "Mapped ${results.size} music tracks.")
                 results
-            } catch (e: Exception) {
-                Log.e(TAG, "CRITICAL: Search failed", e)
+            } catch (t: Throwable) {
+                Log.e(TAG, "CRITICAL: Search failed", t)
                 emptyList()
             }
         }
@@ -173,16 +172,19 @@ class Plugin : MusicAddon {
             val rawDescription = extractor.description?.content ?: ""
             val composer = Regex("Composer:\\s*(.*)").find(rawDescription)?.groupValues?.get(1)?.trim() ?: ""
             val lyricist = Regex("Lyricist:\\s*(.*)").find(rawDescription)?.groupValues?.get(1)?.trim() ?: ""
-            var parsedYear = ""
-
-            val releasedOnMatch = Regex("Released on:\\s*(\\d{4})").find(rawDescription)
-            if (releasedOnMatch != null) {
-                parsedYear = releasedOnMatch.groupValues[1]
-            }
-
+            // Safe year resolution: prioritize regex, guard java.time reflection crash with Throwable
+            var parsedYear = Regex("Released on:\\s*(\\d{4})").find(rawDescription)?.groupValues?.get(1) ?: ""
             if (parsedYear.isEmpty()) {
-                parsedYear = extractor.uploadDate?.instant?.toString()?.take(4) ?: ""
+                parsedYear = try {
+                    extractor.textualUploadDate?.takeLast(4)
+                        ?: extractor.uploadDate?.instant?.toString()?.take(4)
+                        ?: ""
+                } catch (t: Throwable) {
+                    // Catches NoSuchMethodError / OffsetDateTime desugar failures
+                    ""
+                }
             }
+
             var parsedAlbum = ""
             val blocks = rawDescription.split("<br>").map { it.trim() }.filter { it.isNotEmpty() }
             blocks.forEachIndexed { index, block ->
@@ -194,11 +196,15 @@ class Plugin : MusicAddon {
                 }
             }
 
+            // Fixed: use track thumbnail instead of uploader profile avatar
+            val trackThumbnail = extractor.thumbnails.lastOrNull()?.url
+                ?: extractor.uploaderAvatars.firstOrNull()?.url?.replace("s48", "s720")
+
             return ExtSong(
                 id = extractor.url,
                 title = extractor.name,
                 artist = extractor.uploaderName.removeSuffix(" - Topic"),
-                thumbnail = extractor.uploaderAvatars?.firstOrNull()?.url?.replace("s48", "s720") ?: "",
+                thumbnail = trackThumbnail ?: "",
                 duration = extractor.length.toString(),
                 streamableUrls = playableURLs,
                 album = parsedAlbum,
@@ -207,10 +213,9 @@ class Plugin : MusicAddon {
                 lyricist = lyricist,
                 genre = extractor.category ?: ""
             )
-
-        } catch (e: Exception) {
-            Log.e(TAG, "CRITICAL FAILURE: getSongDetails extraction crashed for ID: $songId", e)
-            throw e
+        } catch (t: Throwable) {
+            Log.e(TAG, "CRITICAL FAILURE: getSongDetails extraction crashed for ID: $songId", t)
+            throw t
         }
     }
 
