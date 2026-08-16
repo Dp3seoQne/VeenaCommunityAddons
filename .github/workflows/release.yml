@@ -16,7 +16,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0 # Required to fetch all history for accurate tag detection
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -31,26 +31,41 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build All Sub-Modules
-      # We pass GRADLE_OPTS to allocate more memory to the Gradle JVM
         env:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError"
         run: ./gradlew buildVeenaPlugin --no-daemon
 
-      # Automatically calculate, create, and push the next semver tag
-      - name: Bump version and push tag
+      # Robust semantic tag calculation that does not rely on shared commit history
+      - name: Determine Next Semantic Version
         id: tag_version
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          default_bump: minor # Bumps the minor version (e.g., 1.0.0 -> 1.1.0). Change to 'patch' for 1.0.1.
-          initial_version: 1.0.0
+        run: |
+          # Fetch all remote tags
+          git fetch --tags --force
+          
+          # Find latest valid semver tag (ignoring broken/orphaned ones)
+          LATEST_TAG=$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname | head -n 1)
+          
+          if [ -z "$LATEST_TAG" ]; then
+            NEW_TAG="v1.0.0"
+          else
+            # Strip the leading 'v'
+            VERSION=${LATEST_TAG#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          
+            # Auto-increment patch version (e.g., v1.0.0 -> v1.0.1)
+            NEW_PATCH=$((PATCH + 1))
+            NEW_TAG="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+          fi
+          
+          echo "Generated tag: $NEW_TAG"
+          echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Publish All Generated Packages
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           files: "**/build/veena/*.veena"
           tag_name: ${{ steps.tag_version.outputs.new_tag }}
           name: Release ${{ steps.tag_version.outputs.new_tag }}
-          body: ${{ steps.tag_version.outputs.changelog }}
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
