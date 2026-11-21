@@ -12,12 +12,15 @@ import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 @AddonEntryPoint
-class Plugin : MusicAddon {
+class Plugin : com.indus.veena.contract.CatalogAddon, com.indus.veena.contract.MediaRequestAddon {
     private lateinit var host: ExtensionHost
     private val TAG = "VEENA_NEWPIPE_PLUGIN"
 
-    init {
-        try {
+    override fun getDownloadHeaders(songId: String) = mapOf("Range" to "bytes=0-", "Accept-Encoding" to "identity")
+
+    override fun onLoad(host: ExtensionHost) {
+        this.host = host
+        run {
             Log.d(TAG, "Initializing NewPipe Extractor environment...")
             NewPipe.init(object : Downloader() {
                 override fun execute(request: org.schabi.newpipe.extractor.downloader.Request): Response {
@@ -59,18 +62,29 @@ class Plugin : MusicAddon {
                         throw t
                     }
                 }
-            }
-            )
+            }, org.schabi.newpipe.extractor.localization.Localization(
+                java.util.Locale.getDefault().language.ifBlank { "en" },
+                java.util.Locale.getDefault().country.ifBlank { "IN" }),
+                org.schabi.newpipe.extractor.localization.ContentCountry(java.util.Locale.getDefault().country.ifBlank { "IN" }))
 
             Log.d(TAG, "NewPipe environment ready.")
-        } catch (t: Throwable) {
-            // This fires if NewPipe was already init'd in a previous load — that's fine
-            Log.w(TAG, "NewPipe init skipped or failed: ${t.message}")
         }
     }
 
-    override fun onLoad(host: ExtensionHost) {
-        this.host = host
+    override fun discoverCatalog() = ExtractorCatalog(YouTube).feed()
+    override fun searchCatalog(query: String, page: Int) = ExtractorCatalog(YouTube).search(query)
+    override fun getAlbum(id: String) = ExtractorCatalog(YouTube).album(id)
+    override fun getArtist(id: String) = ExtractorCatalog(YouTube).artist(id)
+
+    override fun discover(): List<com.indus.veena.contract.ExtDiscoverySection> {
+        val kiosk = YouTube.kioskList.getExtractorById("trending_music", null)
+        kiosk.fetchPage()
+        val songs = kiosk.initialPage.items.filterIsInstance<StreamInfoItem>().map { item ->
+            ExtSong(id = item.url, title = item.name, artist = item.uploaderName.orEmpty(),
+                thumbnail = item.thumbnails.lastOrNull()?.url.orEmpty(), duration = item.duration.toString())
+        }
+        return listOf(com.indus.veena.contract.ExtDiscoverySection("trending_music", "Trending in music", songs,
+            "What's taking off on YouTube"))
     }
 
     override fun getSuggestions(query: String): List<String> {
@@ -96,17 +110,13 @@ class Plugin : MusicAddon {
                 Log.d(TAG, "Found ${items.size} total items on page.")
 
                 val results = items.filterIsInstance<StreamInfoItem>()
-                    .take(20)
+                    .take(50)
                     .map { item ->
                         ExtSong(
                             id = item.url,
                             title = item.name ?: "Unknown",
                             artist = item.uploaderName ?: "Unknown Artist",
-                            thumbnail = item.thumbnails.lastOrNull()?.url?.let { url ->
-                                if (url.contains("=")) {
-                                    url.replaceAfterLast("=", "w720-h720")
-                                } else url
-                            } ?: "",
+                            thumbnail = item.thumbnails.lastOrNull()?.url.orEmpty(),
                             duration = item.duration.toString(),
                             album = ""
                         )
@@ -120,7 +130,22 @@ class Plugin : MusicAddon {
             }
         }
 
+    @Synchronized
     override fun getSongDetails(songId: String): ExtSong {
+        try {
+            return extractSongDetails(songId)
+        } catch (error: Exception) {
+            val causes = generateSequence<Throwable>(error) { it.cause }.toList()
+            val transient = causes.any { it is java.io.IOException ||
+                it is org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException }
+            if (!transient) throw error
+            Log.w(TAG, "First extraction failed; retrying once with a fresh extractor/visitor session", error)
+            Thread.sleep(300)
+            return extractSongDetails(songId)
+        }
+    }
+
+    private fun extractSongDetails(songId: String): ExtSong {
         val absoluteUrl = when {
             songId.startsWith("http") -> songId
             songId.startsWith("/") -> "https://www.youtube.com$songId"
@@ -135,18 +160,12 @@ class Plugin : MusicAddon {
             extractor.fetchPage()
             Log.d(TAG, "Page layout fetch complete.")
 
-            val audioStreams = extractor.audioStreams
+            val audioStreams = extractor.audioStreams.filter { it.isUrl &&
+                it.deliveryMethod == org.schabi.newpipe.extractor.stream.DeliveryMethod.PROGRESSIVE_HTTP }
             Log.d(TAG, "Total audio streams found: ${audioStreams.size}")
-            audioStreams.forEachIndexed { index, stream ->
-                Log.d(TAG, "  Audio Stream [$index]: Format=${stream.format?.suffix}, Bitrate=${stream.bitrate}, URL=${stream.content}")
-            }
-
-            val videoStreams = extractor.videoStreams
+            val videoStreams = extractor.videoStreams.filter { it.isUrl &&
+                it.deliveryMethod == org.schabi.newpipe.extractor.stream.DeliveryMethod.PROGRESSIVE_HTTP }
             Log.d(TAG, "Total video streams found: ${videoStreams.size}")
-            videoStreams.forEachIndexed { index, stream ->
-                Log.d(TAG, "  Video Stream [$index]: Format=${stream.format?.suffix}, Resolution=${stream.resolution}, URL=${stream.content}")
-            }
-
             val sortedAudio = audioStreams.sortedByDescending { it.bitrate }
             val playableURLs = mutableMapOf<String, String>()
 
@@ -166,7 +185,7 @@ class Plugin : MusicAddon {
                 playableURLs["128kbps"] = fallbackUrl
                 playableURLs["48kbps"] = fallbackUrl
             } else {
-                Log.w(TAG, "Warning: Extractor succeeded, but both audio and video streams are empty.")
+                error("No progressive audio stream available; this track may require an updated extractor")
             }
 
             val rawDescription = extractor.description?.content ?: ""
@@ -213,6 +232,8 @@ class Plugin : MusicAddon {
                 lyricist = lyricist,
                 genre = extractor.category ?: ""
             )
+        } catch (e: org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException) {
+            throw IllegalStateException("YouTube requires sign-in on this connection. Try another provider or try again later.", e)
         } catch (t: Throwable) {
             Log.e(TAG, "CRITICAL FAILURE: getSongDetails extraction crashed for ID: $songId", t)
             throw t

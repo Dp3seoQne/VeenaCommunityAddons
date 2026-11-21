@@ -9,9 +9,10 @@ import dev.toastbits.ytmkt.impl.youtubei.YoutubeiApi
 import dev.toastbits.ytmkt.itemcache.MediaItemCache
 import dev.toastbits.ytmkt.model.external.ThumbnailProvider
 import dev.toastbits.ytmkt.model.external.mediaitem.YtmSong
+import kotlin.getValue
 
 @AddonEntryPoint
-class Plugin : MusicAddon {
+class Plugin : com.indus.veena.contract.CatalogAddon, com.indus.veena.contract.MediaRequestAddon {
     private lateinit var host: ExtensionHost
     private val api by lazy {
         YoutubeiApi(
@@ -23,9 +24,17 @@ class Plugin : MusicAddon {
     }
     private val SONG_FILTER = "EgWKAQIIAUICCAFqDBAOEAoQAxAEEAkQBQ%3D%3D"
 
+    override fun getDownloadHeaders(songId: String) = mapOf("Range" to "bytes=0-", "Accept-Encoding" to "identity")
+
     override fun onLoad(host: ExtensionHost) {
         this.host = host
     }
+
+    override fun discoverCatalog() = MusicDiscovery(host).catalog()
+    override fun searchCatalog(query: String, page: Int) = MusicDiscovery(host).search(query)
+    override fun getAlbum(id: String) = MusicDiscovery(host).collection(id)
+    override fun getArtist(id: String) = MusicDiscovery(host).collection(id)
+    override fun discover() = MusicDiscovery(host).discover()
 
     override fun getSuggestions(query: String): List<String> {
         return try {
@@ -45,6 +54,7 @@ class Plugin : MusicAddon {
                 val result = api.Search.search(query, SONG_FILTER, false).getOrThrow()
                 result.categories.flatMap { it.first.items.filterIsInstance<YtmSong>() }
                     .map { it.toExtSong() }
+                    .take(50)
             }
         } catch (e: Exception) {
             emptyList()
@@ -57,6 +67,7 @@ class Plugin : MusicAddon {
             host.runSuspending {
                 val videoFormats = api.VideoFormats.getVideoFormats(songId).getOrThrow()
                 videoFormats.forEach { format ->
+                    if (format.url.isNullOrBlank()) return@forEach
                     when (format.itag) {
                         139 -> playableURLs["48kbps"] = format.url!!
                         249 -> playableURLs["53kbps"] = format.url!!
@@ -67,13 +78,17 @@ class Plugin : MusicAddon {
                     }
                 }
             }
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+            Log.e("VeenaYtm", "Stream resolution failed for $songId", e)
+            throw e
+        }
+        check(playableURLs.isNotEmpty()) { "This addon returned no playable audio streams" }
 
         return ExtSong(
             id = songId,
             title = "",
             artist = "",
-            thumbnail = "",
+            thumbnail = "https://i.ytimg.com/vi/$songId/hqdefault.jpg",
             duration = "0",
             streamableUrls = playableURLs
         )

@@ -11,7 +11,7 @@ import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 
 @AddonEntryPoint
-class Plugin : MusicAddon {
+class Plugin : com.indus.veena.contract.CatalogAddon {
     private lateinit var host: ExtensionHost
     private val TAG = "VEENA_SC_PLUGIN"
 
@@ -21,8 +21,9 @@ class Plugin : MusicAddon {
     private val scriptRegex = Regex("""<script\s+crossorigin\s+src="([^"]+)"""")
     private val clientIdRegex = Regex("""client_id\s*:\s*"(\w+)"""")
 
-    init {
-        try {
+    override fun onLoad(host: ExtensionHost) {
+        this.host = host
+        run {
             NewPipe.init(object : Downloader() {
                 override fun execute(request: org.schabi.newpipe.extractor.downloader.Request): org.schabi.newpipe.extractor.downloader.Response {
                     val url = request.url()
@@ -42,11 +43,32 @@ class Plugin : MusicAddon {
                 }
             }
             )
-        } catch (e: Exception) { /* already init */ }
+        }
     }
 
-    override fun onLoad(host: ExtensionHost) {
-        this.host = host
+    override fun discoverCatalog() = ExtractorCatalog(SoundCloud).feed()
+    override fun searchCatalog(query: String, page: Int) = ExtractorCatalog(SoundCloud).search(query)
+    override fun getAlbum(id: String) = ExtractorCatalog(SoundCloud).album(id)
+    override fun getArtist(id: String) = ExtractorCatalog(SoundCloud).artist(id)
+
+    override fun discover(): List<com.indus.veena.contract.ExtDiscoverySection> {
+        val kiosks = SoundCloud.kioskList
+        val sections = kiosks.availableKiosks.mapNotNull { id ->
+            try {
+                val extractor = kiosks.getExtractorById(id, null)
+                extractor.fetchPage()
+                val songs = extractor.initialPage.items.filterIsInstance<StreamInfoItem>().map { item ->
+                    ExtSong(id = item.url, title = item.name, artist = item.uploaderName.orEmpty(),
+                        thumbnail = item.thumbnails.lastOrNull()?.url.orEmpty(), duration = item.duration.toString())
+                }
+                com.indus.veena.contract.ExtDiscoverySection(id, extractor.name, songs, "SoundCloud charts")
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "Kiosk $id unavailable", e)
+                null
+            }
+        }.filter { it.songs.isNotEmpty() }
+        check(sections.isNotEmpty()) { "SoundCloud charts are unavailable. Try again shortly." }
+        return sections
     }
 
     override fun searchSongs(query: String, page: Int): List<ExtSong> {
@@ -107,7 +129,7 @@ class Plugin : MusicAddon {
             title = trackObj.optString("title", "Unknown"),
             artist = trackObj.optJSONObject("user")?.optString("username", "Unknown Artist") ?: "Unknown Artist",
             thumbnail = trackObj.optString("artwork_url").replace("large", "t500x500"),
-            duration = trackObj.optLong("duration", 0).toString(),
+            duration = (trackObj.optLong("duration", 0) / 1000).toString(),
             streamableUrls = playableURLs,
             genre = trackObj.optString("genre", "Music"),
             year = trackObj.optString("created_at").take(4)

@@ -1,8 +1,8 @@
 {
   "id": "svn",
   "name": "Saavn",
-  "version": "1.0.1",
-  "versionCode": 2,
+  "version": "1.0.2",
+  "versionCode": 3,
   "apiVersion": 1,
   "author": "Community",
   "description": "Stream from JioSaavn",
@@ -10,5 +10,12 @@
   "iconUrl": "https://www.jiosaavn.com/corporate/_i/brand-guide/jiosaavn-logo-icon.png",
   "updateUrl": "https://github.com/Dp3seoQne/VeenaCommunityAddons/releases/latest",
   "entryPoint": "com.veena.saavn.SaavnPlugin",
-  "capabilities": ["search", "details", "stream"]
+  "capabilities": [
+    "search",
+    "details",
+    "stream",
+    "discovery",
+    "artists",
+    "albums"
+  ]
 }

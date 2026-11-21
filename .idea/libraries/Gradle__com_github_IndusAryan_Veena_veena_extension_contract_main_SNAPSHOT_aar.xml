@@ -1,8 +1,8 @@
 <component name="libraryTable">
   <library name="Gradle: com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT@aar" external-system-id="GRADLE">
     <CLASSES>
-      <root url="jar://$USER_HOME$/.gradle/caches/9.3.1/transforms/9f9a43f2c042d26b3f499eb71d79f32b/workspace/transformed/veena-extension-contract-main-SNAPSHOT/jars/classes.jar!/" />
-      <root url="file://$USER_HOME$/.gradle/caches/9.3.1/transforms/9f9a43f2c042d26b3f499eb71d79f32b/workspace/transformed/veena-extension-contract-main-SNAPSHOT/AndroidManifest.xml" />
+      <root url="file://$USER_HOME$/.gradle/caches/9.8.1/transforms/3ba5519e0378e7756ddda7c24ab23a4a/transformed/veena-extension-contract-main-SNAPSHOT/AndroidManifest.xml" />
+      <root url="jar://$USER_HOME$/.gradle/caches/9.8.1/transforms/3ba5519e0378e7756ddda7c24ab23a4a/transformed/veena-extension-contract-main-SNAPSHOT/jars/classes.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

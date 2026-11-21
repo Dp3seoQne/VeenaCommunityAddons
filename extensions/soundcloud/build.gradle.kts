@@ -21,8 +21,12 @@ android {
 }
 
 dependencies {
-    compileOnly("com.squareup.okhttp3:okhttp:5.4.0")
-    compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
+    compileOnly("com.squareup.okhttp3:okhttp:5.5.0")
+    if (findProject(":extension-contract") != null) {
+        compileOnly(project(":extension-contract"))
+    } else {
+        compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
+    }
     //implementation("com.github.IndusAryan:Veena:main-SNAPSHOT")
     implementation("com.github.teamnewpipe:NewPipeExtractor:v0.26.3")
 }

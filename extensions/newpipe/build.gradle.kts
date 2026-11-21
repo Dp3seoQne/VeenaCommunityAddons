@@ -1,5 +1,5 @@
 plugins {
-    id("com.android.application") version "9.1.1"
+    id("com.android.application") version "9.4.1"
     id("com.indus.veena.extension")
 }
 
@@ -26,9 +26,13 @@ android {
 }
 
 dependencies {
-    compileOnly("com.squareup.okhttp3:okhttp:5.4.0")
+    compileOnly("com.squareup.okhttp3:okhttp:5.5.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
-    compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
+    if (findProject(":extension-contract") != null) {
+        compileOnly(project(":extension-contract"))
+    } else {
+        compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
+    }
     implementation("com.github.teamnewpipe:NewPipeExtractor:v0.26.5")
     implementation("org.mozilla:rhino") {
         version { strictly("1.7.13") }

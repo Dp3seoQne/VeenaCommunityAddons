@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
     id("com.indus.veena.extension")
-    kotlin("plugin.serialization") version "2.3.21"
+    kotlin("plugin.serialization") version "2.4.21"
 }
 
 android {
@@ -22,7 +22,11 @@ android {
 }
 
 dependencies {
-    compileOnly("com.squareup.okhttp3:okhttp:5.4.0")
-    compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
+    compileOnly("com.squareup.okhttp3:okhttp:5.5.0")
+    if (findProject(":extension-contract") != null) {
+        compileOnly(project(":extension-contract"))
+    } else {
+        compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
+    }
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
 }

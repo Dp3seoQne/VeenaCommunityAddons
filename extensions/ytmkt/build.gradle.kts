@@ -21,7 +21,11 @@ android {
 }
 
 dependencies {
-    compileOnly("com.squareup.okhttp3:okhttp:5.4.0")
-    compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
+    compileOnly("com.squareup.okhttp3:okhttp:5.5.1")
+    if (findProject(":extension-contract") != null) {
+        compileOnly(project(":extension-contract"))
+    } else {
+        compileOnly("com.github.IndusAryan.Veena:veena-extension-contract:main-SNAPSHOT")
+    }
     implementation("dev.toastbits:ytm-kt:0.6.1")
 }
