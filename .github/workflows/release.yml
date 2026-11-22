@@ -4,19 +4,31 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-extensions
+  cancel-in-progress: false
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GH_REPO: ${{ github.repository }}
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -31,41 +43,126 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build All Sub-Modules
+        id: build
+        continue-on-error: true
         env:
-          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError"
-        run: ./gradlew buildVeenaPlugin --no-daemon
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError"
+        run: ./gradlew buildVeenaPlugin --continue --parallel --build-cache
 
-      # Robust semantic tag calculation that does not rely on shared commit history
       - name: Determine Next Semantic Version
         id: tag_version
         run: |
-          # Fetch all remote tags
-          git fetch --tags --force
-          
-          # Find latest valid semver tag (ignoring broken/orphaned ones)
-          LATEST_TAG=$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname | head -n 1)
-          
+          LATEST_TAG=$(git ls-remote --tags --refs origin 'v[0-9]*.[0-9]*.[0-9]*' \
+            | awk '{print $2}' | sed 's#refs/tags/##' | sort -V | tail -n1)
+
           if [ -z "$LATEST_TAG" ]; then
             NEW_TAG="v1.0.0"
           else
-            # Strip the leading 'v'
-            VERSION=${LATEST_TAG#v}
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-          
-            # Auto-increment patch version (e.g., v1.0.0 -> v1.0.1)
-            NEW_PATCH=$((PATCH + 1))
-            NEW_TAG="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST_TAG#v}"
+            NEW_TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
           fi
-          
+
           echo "Generated tag: $NEW_TAG"
           echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Publish All Generated Packages
+      - name: Assemble Release Files and Catalog
+        id: assemble
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir -p dist prev
+          : > built.txt
+          : > carried.txt
+
+          # 1. Freshly built packages, named by the id in their own manifest
+          while IFS= read -r -d '' f; do
+            id=$(unzip -p "$f" assets/manifest.json 2>/dev/null | jq -r '.id // empty' 2>/dev/null || true)
+            if [[ ! "$id" =~ ^[a-z0-9_]+$ ]]; then
+              echo "::warning::$f has a missing/invalid manifest id, ignoring it"
+              continue
+            fi
+            [ "$(basename "$f" .veena)" = "$id" ] || echo "::notice::Renaming $(basename "$f") -> $id.veena"
+            cp "$f" "dist/$id.veena"
+            echo "$id" >> built.txt
+          done < <(find . \( -path ./dist -o -path ./prev \) -prune -o \
+                     -path '*/build/veena/*.veena' -type f -print0)
+
+          if [ ! -s built.txt ]; then
+            echo "::warning::No plugins were built, skipping release."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 2. Previous release packages
+          PREV_TAG=$(gh release view --json tagName -q .tagName 2>/dev/null || true)
+          if [ -n "$PREV_TAG" ]; then
+            gh release download "$PREV_TAG" --dir prev --pattern '*.veena' || true
+          fi
+
+          # 3. Carry over plugins that were not rebuilt (failed modules)
+          for f in prev/*.veena; do
+            id=$(basename "$f" .veena)
+            if [ ! -f "dist/$id.veena" ]; then
+              cp "$f" "dist/$id.veena"
+              echo "$id" >> carried.txt
+              echo "::warning::$id failed to build, carried over from $PREV_TAG"
+            fi
+          done
+
+          # 4. catalog.json in the app's CatalogExtensionItem format
+          for f in dist/*.veena; do
+            id=$(basename "$f" .veena)
+            m=$(unzip -p "$f" assets/manifest.json)
+            bytes=$(stat -c%s "$f")
+            size=$(awk -v b="$bytes" 'BEGIN{ if (b>=1048576) printf "%.2f MB", b/1048576; else printf "%d KB", b/1024 }')
+            jq -nc --argjson m "$m" --arg id "$id" --arg size "$size" \
+              --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/${id}.veena" '
+              {
+                id: $id,
+                name: ($m.name // $id),
+                version: ($m.version // ""),
+                versionCode: ($m.versionCode // 0),
+                downloadUrl: $url,
+                iconUrl: ($m.iconUrl // ""),
+                description: ($m.description // ""),
+                author: ($m.author // "Community"),
+                isOfficial: false,
+                size: $size,
+                capabilities: ($m.capabilities // [])
+              }'
+          done | jq -s 'sort_by(.id)' > dist/catalog.json
+
+          (cd dist && sha256sum *.veena > checksums.txt)
+
+          # 5. Job summary
+          {
+            echo "### Extensions"
+            echo "| id | status | version | versionCode |"
+            echo "|----|--------|---------|-------------|"
+            jq -r --slurpfile built <(jq -R . built.txt | jq -s .) '
+              .[] | "| \(.id) | \(if ($built[0] | index(.id)) then "built" else "carried-over" end) | \(.version) | \(.versionCode) |"
+            ' dist/catalog.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          cat dist/catalog.json
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Publish Release
+        if: steps.assemble.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: "**/build/veena/*.veena"
+          files: |
+            dist/*.veena
+            dist/catalog.json
+            dist/checksums.txt
           tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          target_commitish: ${{ github.sha }}
           name: Release ${{ steps.tag_version.outputs.new_tag }}
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          make_latest: true
+
+      - name: Fail Job if Any Module Failed
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "::error::One or more extensions failed to build. Release was still published with successful builds; failed ones were carried over."
+          exit 1
