@@ -42,6 +42,8 @@ jobs:
       - name: Make Gradle Executable
         run: chmod +x gradlew
 
+      # --continue keeps building modules that don't depend on the failed task;
+      # continue-on-error lets the release steps below still run
       - name: Build All Sub-Modules
         id: build
         continue-on-error: true
@@ -134,18 +136,23 @@ jobs:
 
           (cd dist && sha256sum *.veena > checksums.txt)
 
-          # 5. Job summary
+          # Everything needed for the release is ready, so flag publish now
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+          # 5. Job summary (cosmetic, must never block the release)
           {
             echo "### Extensions"
             echo "| id | status | version | versionCode |"
             echo "|----|--------|---------|-------------|"
-            jq -r --slurpfile built <(jq -R . built.txt | jq -s .) '
-              .[] | "| \(.id) | \(if ($built[0] | index(.id)) then "built" else "carried-over" end) | \(.version) | \(.versionCode) |"
+            jq -r --rawfile built built.txt '
+              ($built | split("\n") | map(select(length > 0))) as $b
+              | .[]
+              | .id as $id
+              | "| \($id) | \(if ($b | index($id)) != null then "built" else "carried-over" end) | \(.version) | \(.versionCode) |"
             ' dist/catalog.json
-          } >> "$GITHUB_STEP_SUMMARY"
+          } >> "$GITHUB_STEP_SUMMARY" || echo "::warning::Could not write job summary"
 
           cat dist/catalog.json
-          echo "publish=true" >> "$GITHUB_OUTPUT"
 
       - name: Publish Release
         if: steps.assemble.outputs.publish == 'true'
@@ -161,8 +168,9 @@ jobs:
           generate_release_notes: true
           make_latest: true
 
+      # Runs even if an earlier step failed; marks the run red after publishing
       - name: Fail Job if Any Module Failed
-        if: steps.build.outcome == 'failure'
+        if: ${{ always() && steps.build.outcome == 'failure' }}
         run: |
           echo "::error::One or more extensions failed to build. Release was still published with successful builds; failed ones were carried over."
           exit 1
